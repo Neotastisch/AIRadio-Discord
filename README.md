@@ -12,5 +12,6 @@ Copying this project without credits will have consequences
 
 
 
-Invite: https://discord.com/api/oauth2/authorize?client_id=1083764692079624294&permissions=8&scope=bot
+Invite: https://discord.com/api/oauth2/authorize?client_id=1083764692079624294&permissions=8&scope=bot 
+
 Support: https://discord.gg/pZKFGWVvfF 
