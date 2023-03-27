@@ -1,19 +1,9 @@
-# AIRadio
+# AIRadio - A Discord Bot for a 24/7 Radio Station
 
-**This Bot is in developement, report bugs in the Issues Tab**
+AIRadio is an innovative Discord bot that enables users to host a 24/7 radio station without any input. Inspired by RadioGPT, this bot automatically streams the latest news, music, and more to keep your server's members entertained at all times.
 
-Inspired by RadioGPT. This is a discord bot, which automatically hosts a 24/7 radio station with current news, music and more. All of that with **no** user input.
+Copyright Neotastisch 2023: Unauthorized copying or reproduction of this project without proper credit will result in consequences.
 
-Open index.js to put in newapi-key, chatgptapi-key and discordbot-token.
+Invite AIRadio to your server by clicking on this link: https://discord.com/api/oauth2/authorize?client_id=1083764692079624294&permissions=8&scope=bot
 
-
-
-*Copyright Neotastisch 2023*:
-Copying this project without credits will have consequences
-
-
-
-
-Invite: https://discord.com/api/oauth2/authorize?client_id=1083764692079624294&permissions=8&scope=bot 
-
-Support: https://discord.gg/pZKFGWVvfF 
+Need help or have questions? Join our support server at https://discord.gg/pZKFGWVvfF
