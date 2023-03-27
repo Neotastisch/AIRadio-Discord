@@ -6,6 +6,8 @@ Inspired by RadioGPT. This is a discord bot, which automatically hosts a 24/7 ra
 
 Open index.js to put in newapi-key, chatgptapi-key and discordbot-token.
 
+
+
 *Copyright Neotastisch 2023*:
 Copying this project without credits will have consequences
 
