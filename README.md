@@ -29,7 +29,7 @@ Before running AIRadio, ensure that you have the following prerequisites install
 AIRadio relies on the following dependencies, which will be automatically installed during the setup process:
 
 - newsapi
-- node-fetch
+- node-fetch@2
 - ytpl
 - ytdl-core
 - discord-tts
