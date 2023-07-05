@@ -1,5 +1,7 @@
 # AIRadio - Discord Bot for a 24/7 Radio Station
 
+**Support and Updates**: [Discord](https://discord.gg/pZKFGWVvfF)
+
 ## Description
 AIRadio is a Discord bot designed to create a 24/7 radio station in your server. The bot automatically streams the latest news, music, and more to keep your server's members entertained at all times. It utilizes various APIs and libraries to fetch and play audio content.
 
@@ -56,3 +58,5 @@ This project is provided as-is, without any warranty or guarantee of its functio
 
 ## Improve this README.md on GitHub
 If you would like to contribute to improving this README.md file, you can make your changes on the GitHub repository. Simply submit a pull request with your proposed changes. Your contributions are greatly appreciated!
+
+If you have any further questions or require assistance, please do not hesitate to reach out to us on [Discord](https://discord.gg/pZKFGWVvfF).
