@@ -1,35 +1,9 @@
+require('dotenv').config(); // npm i dotenv
 
-let chatgptkey = ""
-let newsapikey = ""
-let discordtoken = ""
-
-let language = "English"
-let ytplaylist = "PLk59VHffWyVxCxSCllFmYJAu4hhxrmC7j"
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// Do not touch anything below
+// Do not touch anything below, edit all variables in .env file.
 
 const NewsAPI = require('newsapi');
-const newsapi = new NewsAPI(newsapikey);
+const newsapi = new NewsAPI(process.env.newsapikey);
 let fetch = require('node-fetch');
 const { AudioPlayer, createAudioResource, StreamType, entersState, VoiceConnectionStatus, joinVoiceChannel, createAudioPlayer, AudioPlayerStatus, NoSubscriberBehavior, getVoiceConnection } = require("@discordjs/voice");
 const ytdl = require("ytdl-core")
@@ -104,17 +78,22 @@ function start() {
 
   const todaysDate = new Date()
 
-  newsapi.v2.everything({
+  newsapi.v2.topHeadlines({
     sources: 'bbc-news,the-verge,abc-news,al-jazeera-english,ars-technica,cnn',
     from: todaysDate.getFullYear() + '-' + todaysDate.getMonth + '-' + todaysDate.getDay - 1,
     to: todaysDate.getFullYear() + '-' + todaysDate.getMonth + '-' + todaysDate.getDay,
-    language: 'en',
-    sortBy: 'relevancy',
+    language: process.env.language,
     page: 1
   }).then(async response => {
-    if (response.status != "ok") return
+      if (response.status != "ok") return
 
-    const playlist = await ytpl(ytplaylist);
+      // Check if articles are defined and not empty
+      if (!response.articles || response.articles.length === 0) {
+          console.log('No articles found in response');
+          return;
+      }
+
+      const playlist = await ytpl(process.env.ytplaylist);
 
 
     let pi = playlist.items
@@ -135,12 +114,12 @@ function start() {
 async function get(item, nextsong, url) {
 
 
-  let msg = 'Imagine you are an AI radio station (in language ' + language + '). Write it like this message is after a song. You should buy something about ' + item.title + ' now. Write it as if it could be broadcast directly, dont invent anything. Data: ' + item.description + '. Then say that the song ' + nextsong + ' you will play next.'
+  let msg = 'Imagine you are an AI DJ in online radio station (in language ' + process.env.language + '). Write it like this message is after a song. You should buy something about ' + item.title + ' now. Write it as if it could be broadcast directly, dont invent anything. Data: ' + item.description + '. Then say that the song ' + nextsong + ' you will play next.'
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: 'POST',
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + chatgptkey
+      "Authorization": "Bearer " + process.env.OPEN_AI_API
     },
     body: '{"model": "gpt-3.5-turbo","messages": [{"role": "user", "content": "' + msg + '"}]}'
   });
@@ -287,4 +266,4 @@ function splitString(str) {
 
 
 
-client.login(discordtoken)
+client.login(process.env.discordtoken)
