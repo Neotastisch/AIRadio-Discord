@@ -1,0 +1,8 @@
+#Environment-files for sensitive informaion
+.env
+node_modules
+build
+npm-debug.log
+.nyc
+.DS_Store
+package-lock.json
