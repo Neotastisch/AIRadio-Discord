@@ -1,21 +1,15 @@
 require('dotenv').config(); // npm i dotenv
 
-// Do not touch anything below, edit all variables in .env file.
-
+const { Client, GatewayIntentBits, ActivityType, ChannelType } = require('discord.js');
+const { AudioPlayer, createAudioResource, StreamType, joinVoiceChannel, createAudioPlayer, AudioPlayerStatus, getVoiceConnection } = require("@discordjs/voice");
+const ytdl = require("@distube/ytdl-core");
+const ytpl = require('ytpl');
+const discordTTS = require("discord-tts");
+const ffmpeg = require('ffmpeg-static');
 const NewsAPI = require('newsapi');
 const newsapi = new NewsAPI(process.env.newsapikey);
-let fetch = require('node-fetch');
-const { AudioPlayer, createAudioResource, StreamType, entersState, VoiceConnectionStatus, joinVoiceChannel, createAudioPlayer, AudioPlayerStatus, NoSubscriberBehavior, getVoiceConnection } = require("@discordjs/voice");
-const ytdl = require("ytdl-core")
-const ytpl = require('ytpl');
 
-const discordTTS = require("discord-tts");
-
-let player = createAudioPlayer()
-
-
-const { Client, GatewayIntentBits, ActivityType, ChannelType } = require('discord.js');
-const googleTTS = require('google-tts-api');
+let player = createAudioPlayer();
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages] });
 
 client.on('ready', async () => {
@@ -25,230 +19,191 @@ client.on('ready', async () => {
     status: 'online',
   });
 
-  client.guilds.cache.forEach((guild) => {
+  client.guilds.cache.forEach(async (guild) => {
     guild.channels.cache.forEach(async (channel) => {
-      let na = channel.name.toLowerCase();
-      if (na.includes("radio")) {
-        let connection = await joinVoiceChannel({
-          channelId: channel.id,
-          guildId: channel.guild.id,
-          adapterCreator: channel.guild.voiceAdapterCreator,
-        });
-        const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
-          const newUdp = Reflect.get(newNetworkState, 'udp');
-          clearInterval(newUdp?.keepAliveInterval);
-        }
-        connection.on('stateChange', (oldState, newState) => {
-          Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-          Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
-        });
-        connection.subscribe(player);
+      if (channel.name.toLowerCase().includes("radio")) {
+        await connectToChannel(channel);
       }
-    })
-  })
+    });
+  });
 
   queue();
-
-
 });
 
+async function connectToChannel(channel) {
+  console.log(`Connecting to channel: ${channel.name}`);
+  try {
+    const connection = await joinVoiceChannel({
+      channelId: channel.id,
+      guildId: channel.guild.id,
+      adapterCreator: channel.guild.voiceAdapterCreator,
+    });
 
+    const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
+      const newUdp = Reflect.get(newNetworkState, 'udp');
+      clearInterval(newUdp?.keepAliveInterval);
+    };
+
+    connection.on('stateChange', (oldState, newState) => {
+      Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
+      Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
+    });
+
+    connection.subscribe(player);
+    console.log('Successfully connected and subscribed to the channel');
+  } catch (error) {
+    console.error('Error connecting to channel:', error);
+  }
+}
 
 function start() {
-  player = null
-  player = createAudioPlayer()
-
-  client.guilds.cache.forEach((guild) => {
+  console.log('Starting radio...');
+  player = createAudioPlayer();
+  client.guilds.cache.forEach(async (guild) => {
     guild.channels.cache.forEach(async (channel) => {
-      let na = channel.name.toLowerCase();
-      if (na.includes("radio")) {
-        let connection = getVoiceConnection(guild.id)
-        const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
-          const newUdp = Reflect.get(newNetworkState, 'udp');
-          clearInterval(newUdp?.keepAliveInterval);
+      if (channel.name.toLowerCase().includes("radio")) {
+        const connection = getVoiceConnection(guild.id);
+        if (connection) {
+          connection.subscribe(player);
         }
-        connection.on('stateChange', (oldState, newState) => {
-          Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-          Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
-        });
-        connection.subscribe(player);
       }
-    })
-  })
+    });
+  });
 
-  const todaysDate = new Date()
+  const todaysDate = new Date();
+  const formattedDate = `${todaysDate.getFullYear()}-${String(todaysDate.getMonth() + 1).padStart(2, '0')}-${String(todaysDate.getDate()).padStart(2, '0')}`;
 
   newsapi.v2.topHeadlines({
     sources: 'bbc-news,the-verge,abc-news,al-jazeera-english,ars-technica,cnn',
-    from: todaysDate.getFullYear() + '-' + todaysDate.getMonth + '-' + todaysDate.getDay - 1,
-    to: todaysDate.getFullYear() + '-' + todaysDate.getMonth + '-' + todaysDate.getDay,
+    from: formattedDate,
+    to: formattedDate,
     language: process.env.language,
     page: 1
   }).then(async response => {
-      if (response.status != "ok") return
+    if (response.status !== "ok" || !response.articles || response.articles.length === 0) {
+      console.log('No articles found in response');
+      return;
+    }
 
-      // Check if articles are defined and not empty
-      if (!response.articles || response.articles.length === 0) {
-          console.log('No articles found in response');
-          return;
-      }
+    const playlist = await ytpl(process.env.ytplaylist);
+    const nextSong = getNextSong(playlist.items);
+    const newsItem = getRandomElement(response.articles);
 
-      const playlist = await ytpl(process.env.ytplaylist);
-
-
-    let pi = playlist.items
-    let elem = pi[Math.floor(Math.random() * pi.length)]
-    let nextsong = elem.title;
-    let url = elem.shortUrl;
-
-    console.log("Song found: " + nextsong);
-    let items = response.articles
-    let item = items[Math.floor(Math.random() * items.length)]
-
-    nextsong = nextsong.replace("[Official Music Video]", "").replace("(Lyrics)", "").replace("(Offizielles Musikvideo)", "").replace("(Official Video)", "").replace("-", "with").replace("(Visualizer)", "").replace("(Official Music Video)", "").replace("(Official Visualizer)", "")
-
-    get(item, nextsong, url)
+    get(newsItem, nextSong.title, nextSong.shortUrl);
   });
+
+  playInitialMessage();
 }
 
-async function get(item, nextsong, url) {
-
-
-  let msg = 'Imagine you are an AI DJ in online radio station (in language ' + process.env.language + '). Write it like this message is after a song. You should buy something about ' + item.title + ' now. Write it as if it could be broadcast directly, dont invent anything. Data: ' + item.description + '. Then say that the song ' + nextsong + ' you will play next.'
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: 'POST',
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": "Bearer " + process.env.OPEN_AI_API
-    },
-    body: '{"model": "gpt-3.5-turbo","messages": [{"role": "user", "content": "' + msg + '"}]}'
-  });
-  if (response.status == 200) {
-    let json = await response.json();
-    let msg = json.choices[0].message.content
-    let final = msg.replace("KI", "AI")
-    console.log(final);
-    playaudio(url, final)
-  } else {
-    console.log("Error");
-    console.log(response);
-  }
-
+function playInitialMessage() {
+  const initialMessage = "Welcome to the first AI Radio. Give us a second while we start everything up...";
+  console.log('Playing initial message...');
+  playTextToSpeech(initialMessage);
 }
 
+function getNextSong(items) {
+  const randomItem = getRandomElement(items);
+  return {
+    title: randomItem.title.replace(/\[.*?\]|\(.*?\)/g, '').replace('-', 'with').trim(),
+    shortUrl: randomItem.shortUrl
+  };
+}
 
-async function playaudio(link, message) {
+function getRandomElement(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
-  let missingtts = await splitString(message)
+async function get(newsItem, nextSong, url) {
+  const todaysDate = new Date();
+const time = todaysDate.getHours()
 
-  const stream = discordTTS.getVoiceStream(missingtts[0]);
-  const audioResource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
-  player.play(audioResource);
+  const { GoogleGenerativeAI } = require("@google/generative-ai");
+  const genAI = new GoogleGenerativeAI(process.env.GEMINIKEY);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+  const msg = `Imagine you are an AI DJ in an online radio station (in language ${process.env.language}). Write it like this message is after a song. You should talk something about ${newsItem.title} now. Write it as if it could be broadcast directly, don't invent anything. Data: ${newsItem.description}. Then say that the song ${nextSong} you will play next. you may be creative to hype the viewers up, but dont overdo it. Time hour: ${time}`;
+
+  const result = await model.generateContent(msg);
+  const text = result.response.text();
+
+  console.log('Generated text:', text);
+  playAudio(url, text);
+}
+
+async function playAudio(link, message) {
+  console.log('Playing audio message and song...');
+  const messageParts = splitString(message);
+  playTextToSpeech(messageParts.shift());
 
   player.on(AudioPlayerStatus.Idle, () => {
-    missingtts.shift()
-    if (missingtts.length == 0) {
-      player.removeAllListeners()
-      playsong(link)
-      return
+    if (messageParts.length === 0) {
+      player.removeAllListeners();
+      playSong(link);
+    } else {
+      playTextToSpeech(messageParts.shift());
     }
-    const stream = discordTTS.getVoiceStream(missingtts[0]);
-    const audioResource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
-    player.play(audioResource);
   });
-
-
 }
 
-function playsong(link) {
+function playTextToSpeech(text) {
+  const stream = discordTTS.getVoiceStream(text);
+  const audioResource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+  player.play(audioResource);
+}
 
-  let songurl = link
-  const stream = ytdl(songurl, { filter: 'audioonly' });
+function playSong(link) {
+  console.log('Playing song:', link);
+  const stream = ytdl(link, { filter: 'audioonly', quality: 'highestaudio', highWaterMark: 1 << 25 });
   const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
 
+  player.play(resource);
 
-  player.play(resource, { seek: 0, volume: 0.3 });
-
-
-  var listener = () => {
+  player.on(AudioPlayerStatus.Idle, () => {
     queue();
-    return;
-  };
-  player.on(AudioPlayerStatus.Idle, listener);
-
-
+  });
 }
 
-async function queue() {
-  let count = await connectedUsers();
 
-  if (count > 0) {
-    setTimeout(() => {
-      start();
-    }, "1000");
-    return;
+async function queue() {
+  const userCount = await connectedUsers();
+  if (userCount > 0) {
+    setTimeout(start, 1000);
   } else {
-    setTimeout(() => {
-      queue();
-    }, "1000");
+    setTimeout(queue, 1000);
   }
 }
 
-
 async function connectedUsers() {
-  let guilds = []
-  let count = 0
+  let userCount = 0;
+  let guilds = new Set();
 
-  await client.guilds.cache.forEach(async (guild) => {
-
-
-
-    await guild.channels.cache.forEach(async (channel) => {
-      let na = channel.name.toLowerCase();
-      if (na.includes("radio")) {
-
-        if (!guilds.includes(guild.id)) {
-          guilds.push(guild.id)
-          channel.members.forEach(element => {
-            count += 1
-          });
+  for (const guild of client.guilds.cache.values()) {
+    for (const channel of guild.channels.cache.values()) {
+      if (channel.name.toLowerCase().includes("radio")) {
+        if (!guilds.has(guild.id)) {
+          guilds.add(guild.id);
+          userCount += channel.members.size;
         }
       }
-    })
-  })
-  return count - guilds.length
+    }
+  }
+
+  return userCount - guilds.size;
 }
 
-client.on("guildCreate", async guild => {
-  let defaultChannel = ""
-  guild.channels.cache.forEach((channel) => {
-    if (defaultChannel == "") {
-      defaultChannel = channel.name
-      channel.send("Thank you for adding the AI-Powered Radio. I have created an channel for you, **if you already have one, delete it. You can never have duplicates with the name 'radio' in it!**")
-    }
-  })
+client.on("guildCreate", async (guild) => {
+  let defaultChannel = guild.channels.cache.find(channel => channel.type === ChannelType.GuildText);
+  if (defaultChannel) {
+    defaultChannel.send("Thank you for adding the AI-Powered Radio. I have created a channel for you, **if you already have one, delete it. You can never have duplicates with the name 'radio' in it!**");
+  }
 
-
-  let channel = await guild.channels.create({
+  const channel = await guild.channels.create({
     name: "radio",
     type: ChannelType.GuildVoice,
     parent: null,
   });
 
-  let connection = await joinVoiceChannel({
-    channelId: channel.id,
-    guildId: channel.guild.id,
-    adapterCreator: channel.guild.voiceAdapterCreator,
-  });
-  const networkStateChangeHandler = (oldNetworkState, newNetworkState) => {
-    const newUdp = Reflect.get(newNetworkState, 'udp');
-    clearInterval(newUdp?.keepAliveInterval);
-  }
-  connection.on('stateChange', (oldState, newState) => {
-    Reflect.get(oldState, 'networking')?.off('stateChange', networkStateChangeHandler);
-    Reflect.get(newState, 'networking')?.on('stateChange', networkStateChangeHandler);
-  });
-  connection.subscribe(player);
+  await connectToChannel(channel);
 });
 
 function splitString(str) {
@@ -259,11 +214,10 @@ function splitString(str) {
       substr = substr.substring(0, Math.min(substr.length, substr.lastIndexOf(" ")));
     }
     arr.push(substr);
-    str = str.substring(substr.length).trim();
+    str = str.substring(substr.length).trim(); // Corrected line
   }
   return arr;
 }
 
 
-
-client.login(process.env.discordtoken)
+client.login(process.env.discordtoken);
