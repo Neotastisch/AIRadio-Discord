@@ -9,13 +9,32 @@ const ffmpeg = require('ffmpeg-static');
 const NewsAPI = require('newsapi');
 const newsapi = new NewsAPI(process.env.newsapikey);
 
+
+let premiumVoice = true
+
+let dataradio = process.env.dataradio
+
+const ElevenLabs = require('elevenlabs-node');
+let voice = undefined
+if(process.env.ELEVEN_LABS_API_KEY){
+  voice = new ElevenLabs({
+    apiKey: process.env.ELEVEN_LABS_API_KEY, // Your Eleven Labs API key
+  });
+}else{
+  premiumVoice = false;
+}
+
+
+// Event listener for commands
+
+
 let player = createAudioPlayer();
 const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildVoiceStates, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages] });
 
 client.on('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
   client.user.setPresence({
-    activities: [{ name: `Powered by BotVision`, type: ActivityType.Listening }],
+    activities: [{ name: `Powered by Neotastisch`, type: ActivityType.Listening }],
     status: 'online',
   });
 
@@ -28,6 +47,18 @@ client.on('ready', async () => {
   });
 
   queue();
+});
+
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+
+  const args = message.content.trim().split(/ +/);
+  const commandName = args.shift().toLowerCase();
+
+  if(commandName == "skip"){
+    connection.player.stop();
+    start()
+  }
 });
 
 async function connectToChannel(channel) {
@@ -96,9 +127,8 @@ function start() {
 }
 
 function playInitialMessage() {
-  const initialMessage = "Welcome to the first AI Radio. Give us a second while we start everything up...";
-  console.log('Playing initial message...');
-  playTextToSpeech(initialMessage);
+  let resource = createAudioResource("./warte.mp3")
+  player.play(resource)
 }
 
 function getNextSong(items) {
@@ -115,54 +145,88 @@ function getRandomElement(arr) {
 
 async function get(newsItem, nextSong, url) {
   const todaysDate = new Date();
-const time = todaysDate.getHours()
+const time = todaysDate.getHours()+":"+todaysDate.getMinutes()
 
+try{
   const { GoogleGenerativeAI } = require("@google/generative-ai");
   const genAI = new GoogleGenerativeAI(process.env.GEMINIKEY);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-  const msg = `Imagine you are an AI DJ in an online radio station (in language ${process.env.language}). Write it like this message is after a song. You should talk something about ${newsItem.title} now. Write it as if it could be broadcast directly, don't invent anything. Data: ${newsItem.description}. Then say that the song ${nextSong} you will play next. you may be creative to hype the viewers up, but dont overdo it. Time hour: ${time}`;
+  const msg = `speak ${process.env.language} the whole time. Imagine you are an AI DJ in an online radio station. Some things about it: ${JSON.stringify(dataradio)}. Write it like this message is after a song. You should talk something about ${newsItem.title} now. Write it as if it could be broadcast directly, don't invent anything. Data: ${newsItem.description}. Then say that the song ${nextSong} you will play next.  Time: ${time}`;
 
   const result = await model.generateContent(msg);
   const text = result.response.text();
 
   console.log('Generated text:', text);
   playAudio(url, text);
+}catch(err){
+  console.log(err);
+  playAudio(url, process.env.errormessage)
+}
 }
 
 async function playAudio(link, message) {
   console.log('Playing audio message and song...');
-  const messageParts = splitString(message);
-  playTextToSpeech(messageParts.shift());
 
+  if(premiumVoice == false){
+  const messageParts = splitString(message);
+  playTextToSpeechOld(messageParts.shift());
+  setTimeout(function(){
   player.on(AudioPlayerStatus.Idle, () => {
     if (messageParts.length === 0) {
       player.removeAllListeners();
       playSong(link);
     } else {
-      playTextToSpeech(messageParts.shift());
+      playTextToSpeechOld(messageParts.shift());
     }
   });
+},3000)
+}else{
+  playTextToSpeech(message);
+  setTimeout(function(){
+    player.on(AudioPlayerStatus.Idle, () => {
+      playSong(link);
+  });
+  },3000)
+
+}
 }
 
-function playTextToSpeech(text) {
+function playTextToSpeechOld(text) {
   const stream = discordTTS.getVoiceStream(text);
   const audioResource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
   player.play(audioResource);
 }
 
-function playSong(link) {
-  console.log('Playing song:', link);
-  const stream = ytdl(link, { filter: 'audioonly', quality: 'highestaudio', highWaterMark: 1 << 25 });
-  const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
-
-  player.play(resource);
-
-  player.on(AudioPlayerStatus.Idle, () => {
-    queue();
+async function playTextToSpeech(text) {
+  const stream = await voice.textToSpeechStream({
+    textInput: text,
+    responseType: 'stream', // Stream the audio directly
+    voiceId:         "Jdr9LWY1JEhgc5qzlOyT",         // A different Voice ID from the default
+    modelId:         "eleven_multilingual_v2",       // The ElevenLabs Model ID
+    responseType:    "stream",                       // The streaming type (arraybuffer, stream, json)    
   });
+
+  const audioResource = createAudioResource(stream, { inputType: StreamType.Arbitrary });
+
+  player.play(audioResource);
 }
 
+function playSong(link) {
+  console.log('Playing song:', link);
+  
+  // Adjust the options for better audio quality
+  const stream = ytdl(link, { filter: 'audioonly', quality: 'highestaudio' });
+
+  const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+
+  // Replace the previous player with the updated one
+  player.play(resource);
+  
+  player.on(AudioPlayerStatus.Idle, () => {
+    queue(); // Implement your queue logic here
+  });
+}
 
 async function queue() {
   const userCount = await connectedUsers();
