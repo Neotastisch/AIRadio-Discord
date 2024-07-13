@@ -26,18 +26,7 @@ Before running AIRadio, ensure that you have the following prerequisites install
 - Node.js (version 12 or higher)
 
 ## Dependencies
-AIRadio relies on the following dependencies, which will be automatically installed during the setup process:
-
-- newsapi
-- node-fetch@2
-- ytpl
-- ytdl-core
-- discord-tts
-- google-tts-api
-- discord.js
-- @discord.js/opus
-- opusscript
-- node-opus
+AIRadio relies on the dependencies, which are listed in the package.json, which will be automatically installed during the setup process:
 
 ## Usage
 Once the bot is up and running, it will automatically join the specified voice channel in your Discord server (It has to include the name "radio"). It will then stream content such as news articles, music playlists, and more.
