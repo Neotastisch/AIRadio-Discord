@@ -1,7 +1,5 @@
 # AIRadio - Discord Bot for a 24/7 Radio Station
 
-**Disconntinued developement**
-
 ## Description
 AIRadio is a Discord bot designed to create a 24/7 radio station in your server. The bot automatically streams the latest news, music, and more to keep your server's members entertained at all times. It utilizes various APIs and libraries to fetch and play audio content.
 
