@@ -5,7 +5,6 @@ const { AudioPlayer, createAudioResource, StreamType, joinVoiceChannel, createAu
 const ytdl = require("@distube/ytdl-core");
 const ytpl = require('ytpl');
 const discordTTS = require("discord-tts");
-const ffmpeg = require('ffmpeg-static');
 const NewsAPI = require('newsapi');
 const newsapi = new NewsAPI(process.env.newsapikey);
 
