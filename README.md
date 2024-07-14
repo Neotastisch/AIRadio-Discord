@@ -15,9 +15,8 @@ To set up AIRadio, follow these steps:
    npm install
    ```
 4. Edit the Parameters inside the example env and rename it to ".env".
-5. Download FFMPEG and save it in the folder as "FFMPEG.exe" in the main directory
-6. Add loading music to the main directory and call it "warte.mp3"
-7. Start the bot by running the following command:
+5. Add loading music to the main directory and call it "warte.mp3"
+6. Start the bot by running the following command:
    ```
    node index.js
    ```
