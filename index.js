@@ -6,12 +6,14 @@ const ytdl = require("@distube/ytdl-core");
 const ytpl = require('ytpl');
 const discordTTS = require("discord-tts");
 const NewsAPI = require('newsapi');
-const OpenAI = require('openai');
+const { Configuration, OpenAIApi } = require('openai');
 
 const newsapi = new NewsAPI(process.env.newsapikey);
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
 });
+const openai = new OpenAIApi(configuration);
 
 let premiumVoice = true;
 let dataradio = process.env.dataradio;
@@ -157,8 +159,8 @@ async function get(newsItem, nextSong, url) {
     
     Important: Speak in ${process.env.language} and keep the tone natural and engaging.`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+    const completion = await openai.createChatCompletion({
+      model: "gpt-4",
       messages: [
         {
           role: "system",
@@ -173,7 +175,7 @@ async function get(newsItem, nextSong, url) {
       max_tokens: 300
     });
 
-    const text = completion.choices[0].message.content;
+    const text = completion.data.choices[0].message.content;
     console.log('Generated text:', text);
     playAudio(url, text);
   } catch(err) {
