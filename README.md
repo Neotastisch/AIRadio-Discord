@@ -17,6 +17,7 @@ ASAR is a cutting-edge Discord radio bot powered by OpenAI's GPT-4o, bringing AI
 
 - Node.js (v16 or higher)
 - npm (Node Package Manager)
+- C++ Framework
 - Discord Bot Token
 - OpenAI API Key
 - NewsAPI Key
