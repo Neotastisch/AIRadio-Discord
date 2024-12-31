@@ -134,12 +134,31 @@ function playInitialMessage() {
   player.play(resource)
 }
 
-function getNextSong(items) {
-  const randomItem = getRandomElement(items);
-  return {
-    title: randomItem.title.replace(/\[.*?\]|\(.*?\)/g, '').replace('-', 'with').trim(),
-    shortUrl: randomItem.shortUrl
-  };
+async function getNextSong(items) {
+  try {
+    // Try multiple items in case some are unavailable
+    for (let i = 0; i < 3; i++) {
+      const randomItem = getRandomElement(items);
+      try {
+        // Verify the video is available
+        await ytdl.getBasicInfo(randomItem.shortUrl);
+        return {
+          title: randomItem.title.replace(/\[.*?\]|\(.*?\)/g, '').replace('-', 'with').trim(),
+          shortUrl: randomItem.shortUrl
+        };
+      } catch (error) {
+        console.warn(`Skipping unavailable video: ${randomItem.title}`, error.message);
+        continue;
+      }
+    }
+    throw new Error('No available songs found after multiple attempts');
+  } catch (error) {
+    console.error('Error in getNextSong:', error);
+    return {
+      title: "the next song",
+      shortUrl: items[0].shortUrl // Fallback to first song
+    };
+  }
 }
 
 function getRandomElement(arr) {
@@ -231,20 +250,51 @@ async function playTextToSpeech(text) {
   player.play(audioResource);
 }
 
-function playSong(link) {
+async function playSong(link) {
   console.log('Playing song:', link);
   
-  // Adjust the options for better audio quality
-  const stream = ytdl(link, { filter: 'audioonly', quality: 'highestaudio' });
+  try {
+    const stream = ytdl(link, {
+      filter: 'audioonly',
+      quality: 'highestaudio',
+      highWaterMark: 1 << 25, // 32MB buffer
+      requestOptions: {
+        headers: {
+          cookie: process.env.YOUTUBE_COOKIE || '', // Optional: Add YouTube cookie for better access
+          // Add common headers to appear more like a browser
+          'Accept': '*/*',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      }
+    });
 
-  const resource = createAudioResource(stream, { inputType: StreamType.Arbitrary, inlineVolume: true });
+    stream.on('error', (error) => {
+      console.error('YouTube stream error:', error);
+      queue(); // Try next song on error
+    });
 
-  // Replace the previous player with the updated one
-  player.play(resource);
-  
-  player.on(AudioPlayerStatus.Idle, () => {
-    queue(); // Implement your queue logic here
-  });
+    const resource = createAudioResource(stream, {
+      inputType: StreamType.Arbitrary,
+      inlineVolume: true
+    });
+
+    resource.volume?.setVolume(1); // Adjust volume if needed
+    player.play(resource);
+    
+    player.on(AudioPlayerStatus.Idle, () => {
+      queue();
+    });
+
+    player.on('error', error => {
+      console.error('Player error:', error);
+      queue();
+    });
+
+  } catch (error) {
+    console.error('Error in playSong:', error);
+    queue();
+  }
 }
 
 async function queue() {
