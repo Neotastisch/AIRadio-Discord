@@ -6,23 +6,25 @@ const ytdl = require("@distube/ytdl-core");
 const ytpl = require('ytpl');
 const discordTTS = require("discord-tts");
 const NewsAPI = require('newsapi');
+const OpenAI = require('openai');
+
 const newsapi = new NewsAPI(process.env.newsapikey);
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-
-let premiumVoice = true
-
-let dataradio = process.env.dataradio
+let premiumVoice = true;
+let dataradio = process.env.dataradio;
 
 const ElevenLabs = require('elevenlabs-node');
-let voice = undefined
+let voice = undefined;
 if(process.env.ELEVEN_LABS_API_KEY){
   voice = new ElevenLabs({
-    apiKey: process.env.ELEVEN_LABS_API_KEY, // Your Eleven Labs API key
+    apiKey: process.env.ELEVEN_LABS_API_KEY,
   });
 }else{
   premiumVoice = false;
 }
-
 
 // Event listener for commands
 
@@ -33,7 +35,7 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBit
 client.on('ready', async () => {
   console.log(`Logged in as ${client.user.tag}!`);
   client.user.setPresence({
-    activities: [{ name: `Powered by Neotastisch`, type: ActivityType.Listening }],
+    activities: [{ name: `Powered by Neo`, type: ActivityType.Listening }],
     status: 'online',
   });
 
@@ -144,24 +146,40 @@ function getRandomElement(arr) {
 
 async function get(newsItem, nextSong, url) {
   const todaysDate = new Date();
-const time = todaysDate.getHours()+":"+todaysDate.getMinutes()
+  const time = todaysDate.getHours()+":"+todaysDate.getMinutes();
 
-try{
-  const { GoogleGenerativeAI } = require("@google/generative-ai");
-  const genAI = new GoogleGenerativeAI(process.env.GEMINIKEY);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  try {
+    const prompt = `You are an AI DJ in an online radio station with these characteristics: ${JSON.stringify(dataradio)}. 
+    This message comes after a song. Create an engaging radio announcement about this news: "${newsItem.title}".
+    Use this data for accuracy: ${newsItem.description}
+    Then announce that you'll play this song next: ${nextSong}
+    Current time is: ${time}
+    
+    Important: Speak in ${process.env.language} and keep the tone natural and engaging.`;
 
-  const msg = `speak ${process.env.language} the whole time. Imagine you are an AI DJ in an online radio station. Some things about it: ${JSON.stringify(dataradio)}. Write it like this message is after a song. You should talk something about ${newsItem.title} now. Write it as if it could be broadcast directly, don't invent anything. Data: ${newsItem.description}. Then say that the song ${nextSong} you will play next.  Time: ${time}`;
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional radio DJ. Keep responses concise and engaging, perfect for radio broadcasting."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    });
 
-  const result = await model.generateContent(msg);
-  const text = result.response.text();
-
-  console.log('Generated text:', text);
-  playAudio(url, text);
-}catch(err){
-  console.log(err);
-  playAudio(url, process.env.errormessage)
-}
+    const text = completion.choices[0].message.content;
+    console.log('Generated text:', text);
+    playAudio(url, text);
+  } catch(err) {
+    console.error('Error generating radio content:', err);
+    playAudio(url, process.env.errormessage);
+  }
 }
 
 async function playAudio(link, message) {

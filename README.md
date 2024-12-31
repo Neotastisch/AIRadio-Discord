@@ -1,50 +1,96 @@
-# AIRadio - Discord Bot for a 24/7 Radio Station
+# ASAR: Actually Smart AI Radio 🎙️🤖
 
-## Description
-AIRadio is a Discord bot designed to create a 24/7 radio station in your server. The bot automatically streams the latest news, music, and more to keep your server's members entertained at all times. It utilizes various APIs and libraries to fetch and play audio content.
+ASAR is a cutting-edge Discord radio bot powered by OpenAI's GPT-4o, bringing AI-driven radio broadcasting to your Discord server. It combines news updates, music, and AI-generated commentary for a unique radio experience.
 
-## Setup
-To set up AIRadio, follow these steps:
+## Features ✨
 
-1. Clone or download the project from the GitHub repository.
-2. Navigate to the project's directory and open a terminal.
-3. Run the following command to initialize the project and install dependencies:
-   ```
-   npm install
-   ```
-4. Edit the Parameters inside the example env and rename it to ".env".
-5. Add loading music to the main directory and call it "warte.mp3"
-6. Start the bot by running the following command:
-   ```
-   node index.js
-   ```
+- 🎵 24/7 Radio Broadcasting
+- 🤖 GPT-4 Powered DJ Commentary
+- 📰 Real-time News Integration
+- 🎙️ Premium Voice Support (via ElevenLabs)
+- 🌍 Multi-language Support
+- 🎶 YouTube Playlist Integration
+- ⚡ Auto-join Radio Channels
+- 📢 Skip Command Support
 
-## Prerequisites
-Before running AIRadio, ensure that you have the following prerequisites installed:
+## Prerequisites 📋
 
-- Node.js (version 12 or higher)
+- Node.js (v16 or higher)
+- npm (Node Package Manager)
+- Discord Bot Token
+- OpenAI API Key
+- NewsAPI Key
+- ElevenLabs API Key (Optional, for premium voice)
 
-## Dependencies
-AIRadio relies on the dependencies, which are listed in the package.json, which will be automatically installed during the setup process:
+## Installation 🚀
 
-## Usage
-Once the bot is up and running, it will automatically join the specified voice channel in your Discord server (It has to include the name "radio"). It will then stream content such as news articles, music playlists, and more.
+1. Clone the repository
 
-Refer to the code and comments in the `index.js` file to understand the available commands and their functionalities.
+2. Install dependencies:
+```bash
+npm install
+```
 
-## Credits
-AIRadio was created by Neotastisch in 2023. Proper credit must be given if you choose to use or modify this project.
+3. Set up environment variables:
+```bash
+cp .env-sample .env
+```
 
-## Contributing
-If you would like to contribute to the development of AIRadio, feel free to fork the repository, make your changes, and submit a pull request. Contributions are always welcome!
+4. Edit the `.env` file with your API keys and configuration.
 
-## License
-AIRadio is licensed under the [MIT License](https://opensource.org/licenses/MIT). Please see the `LICENSE` file for more details.
+## Configuration ⚙️
 
-## Disclaimer
-This project is provided as-is, without any warranty or guarantee of its functionality or suitability for any specific purpose. The creator of this project is not responsible for any issues or damages caused by the usage of this bot.
+Configure your radio station by editing the following in your `.env` file:
 
-## Improve this README.md on GitHub
-If you would like to contribute to improving this README.md file, you can make your changes on the GitHub repository. Simply submit a pull request with your proposed changes. Your contributions are greatly appreciated!
+- `OPENAI_API_KEY`: Your OpenAI API key
+- `newsapikey`: Your NewsAPI key
+- `discordtoken`: Your Discord bot token
+- `language`: Preferred language for announcements
+- `ytplaylist`: YouTube playlist ID for music
+- `dataradio`: Radio station information
+- `ELEVEN_LABS_API_KEY`: (Optional) For premium voice quality
 
-If you have any further questions or require assistance, please do not hesitate to reach out to us on [Discord](https://discord.gg/pZKFGWVvfF).
+## Usage 💡
+
+1. Start the bot:
+```bash
+node index.js
+```
+
+2. The bot will automatically:
+   - Join voice channels named "radio"
+   - Play music from your configured playlist
+   - Announce news with AI-generated commentary
+   - Switch between songs and announcements
+
+## Commands 🎮
+
+- `skip`: Skip the current song/announcement
+
+## Voice Options 🎙️
+
+ASAR supports two voice modes:
+1. Basic TTS (Default)
+2. Premium ElevenLabs voice (requires API key)
+
+## Contributing 🤝
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License 📄
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support 💪
+
+If you encounter any issues or have questions, please open an issue on GitHub.
+
+## Credits 🙏
+
+- OpenAI GPT-4 for AI commentary
+- ElevenLabs for premium voice synthesis
+- NewsAPI for real-time news updates
+- Discord.js for Discord integration
+
+---
+Made with ❤️ by [Your Name]
