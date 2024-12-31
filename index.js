@@ -90,7 +90,7 @@ async function connectToChannel(channel) {
   }
 }
 
-function start() {
+async function start() {
   console.log('Starting radio...');
   player = createAudioPlayer();
   client.guilds.cache.forEach(async (guild) => {
@@ -104,29 +104,49 @@ function start() {
     });
   });
 
-  const todaysDate = new Date();
-  const formattedDate = `${todaysDate.getFullYear()}-${String(todaysDate.getMonth() + 1).padStart(2, '0')}-${String(todaysDate.getDate()).padStart(2, '0')}`;
+  try {
+    const todaysDate = new Date();
+    const formattedDate = `${todaysDate.getFullYear()}-${String(todaysDate.getMonth() + 1).padStart(2, '0')}-${String(todaysDate.getDate()).padStart(2, '0')}`;
 
-  newsapi.v2.topHeadlines({
-    sources: 'bbc-news,the-verge,abc-news,al-jazeera-english,ars-technica,cnn',
-    from: formattedDate,
-    to: formattedDate,
-    language: process.env.language,
-    page: 1
-  }).then(async response => {
-    if (response.status !== "ok" || !response.articles || response.articles.length === 0) {
+    const newsResponse = await newsapi.v2.topHeadlines({
+      sources: 'bbc-news,the-verge,abc-news,al-jazeera-english,ars-technica,cnn',
+      from: formattedDate,
+      to: formattedDate,
+      language: process.env.language,
+      page: 1
+    });
+
+    if (newsResponse.status !== "ok" || !newsResponse.articles || newsResponse.articles.length === 0) {
       console.log('No articles found in response');
+      playInitialMessage();
       return;
     }
 
-    const playlist = await ytpl(process.env.ytplaylist);
-    const nextSong = getNextSong(playlist.items);
-    const newsItem = getRandomElement(response.articles);
+    try {
+      const playlist = await ytpl(process.env.ytplaylist, { limit: 100 });
+      if (!playlist || !playlist.items || playlist.items.length === 0) {
+        console.error('No valid items in playlist');
+        playInitialMessage();
+        return;
+      }
 
-    get(newsItem, nextSong.title, nextSong.shortUrl);
-  });
+      const nextSong = await getNextSong(playlist.items);
+      if (!nextSong || !nextSong.shortUrl) {
+        console.error('Could not get next song');
+        playInitialMessage();
+        return;
+      }
 
-  playInitialMessage();
+      const newsItem = getRandomElement(newsResponse.articles);
+      await get(newsItem, nextSong.title, nextSong.shortUrl);
+    } catch (error) {
+      console.error('Error in playlist handling:', error);
+      playInitialMessage();
+    }
+  } catch (error) {
+    console.error('Error in start function:', error);
+    playInitialMessage();
+  }
 }
 
 function playInitialMessage() {
@@ -135,15 +155,30 @@ function playInitialMessage() {
 }
 
 async function getNextSong(items) {
+  if (!items || !Array.isArray(items) || items.length === 0) {
+    console.error('Invalid items array provided to getNextSong');
+    return null;
+  }
+
   try {
     // Try multiple items in case some are unavailable
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < Math.min(5, items.length); i++) {
       const randomItem = getRandomElement(items);
+      if (!randomItem || !randomItem.shortUrl) {
+        console.warn('Invalid item found in playlist, skipping...');
+        continue;
+      }
+
       try {
         // Verify the video is available
-        await ytdl.getBasicInfo(randomItem.shortUrl);
+        const videoInfo = await ytdl.getBasicInfo(randomItem.shortUrl);
+        if (!videoInfo || videoInfo.videoDetails.isPrivate) {
+          console.warn(`Video ${randomItem.shortUrl} is not available, skipping...`);
+          continue;
+        }
+
         return {
-          title: randomItem.title.replace(/\[.*?\]|\(.*?\)/g, '').replace('-', 'with').trim(),
+          title: randomItem.title ? randomItem.title.replace(/\[.*?\]|\(.*?\)/g, '').replace('-', 'with').trim() : 'Unknown Title',
           shortUrl: randomItem.shortUrl
         };
       } catch (error) {
@@ -154,10 +189,11 @@ async function getNextSong(items) {
     throw new Error('No available songs found after multiple attempts');
   } catch (error) {
     console.error('Error in getNextSong:', error);
-    return {
+    // Return a safe fallback
+    return items[0] && items[0].shortUrl ? {
       title: "the next song",
-      shortUrl: items[0].shortUrl // Fallback to first song
-    };
+      shortUrl: items[0].shortUrl
+    } : null;
   }
 }
 
@@ -251,17 +287,31 @@ async function playTextToSpeech(text) {
 }
 
 async function playSong(link) {
+  if (!link || typeof link !== 'string') {
+    console.error('Invalid link provided to playSong:', link);
+    queue();
+    return;
+  }
+
   console.log('Playing song:', link);
   
   try {
+    // Validate URL before attempting to play
+    try {
+      await ytdl.getBasicInfo(link);
+    } catch (error) {
+      console.error('Invalid YouTube URL or video unavailable:', error);
+      queue();
+      return;
+    }
+
     const stream = ytdl(link, {
       filter: 'audioonly',
       quality: 'highestaudio',
       highWaterMark: 1 << 25, // 32MB buffer
       requestOptions: {
         headers: {
-          cookie: process.env.YOUTUBE_COOKIE || '', // Optional: Add YouTube cookie for better access
-          // Add common headers to appear more like a browser
+          cookie: process.env.YOUTUBE_COOKIE || '',
           'Accept': '*/*',
           'Accept-Language': 'en-US,en;q=0.5',
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -271,7 +321,7 @@ async function playSong(link) {
 
     stream.on('error', (error) => {
       console.error('YouTube stream error:', error);
-      queue(); // Try next song on error
+      queue();
     });
 
     const resource = createAudioResource(stream, {
@@ -279,8 +329,10 @@ async function playSong(link) {
       inlineVolume: true
     });
 
-    resource.volume?.setVolume(1); // Adjust volume if needed
-    player.play(resource);
+    resource.volume?.setVolume(1);
+    
+    // Remove existing listeners before adding new ones
+    player.removeAllListeners();
     
     player.on(AudioPlayerStatus.Idle, () => {
       queue();
@@ -290,6 +342,8 @@ async function playSong(link) {
       console.error('Player error:', error);
       queue();
     });
+
+    player.play(resource);
 
   } catch (error) {
     console.error('Error in playSong:', error);
