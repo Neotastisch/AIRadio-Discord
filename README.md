@@ -85,12 +85,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 If you encounter any issues or have questions, please open an issue on GitHub.
 
-## Credits 🙏
-
-- OpenAI GPT-4 for AI commentary
-- ElevenLabs for premium voice synthesis
-- NewsAPI for real-time news updates
-- Discord.js for Discord integration
-
----
-Made with ❤️ by [Your Name]
+Made with ❤️ by Neo
