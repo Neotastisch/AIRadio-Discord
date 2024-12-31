@@ -160,7 +160,7 @@ async function get(newsItem, nextSong, url) {
     Important: Speak in ${process.env.language} and keep the tone natural and engaging.`;
 
     const completion = await openai.createChatCompletion({
-      model: "gpt-4",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
